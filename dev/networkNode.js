@@ -14,11 +14,6 @@ App.get('/blockchain', function (req, res) {
     res.send(Bitcoin);
 });
 
-App.post('/transaction', function (req, res) {
-    const block_index = Bitcoin.createNewTransaction(req.body.amount, req.body.sender, req.body.recipient);
-    res.send({message: `A transação será posta no bloco ${block_index}.`});
-});
-
 App.get('/mine', function (req, res) {
     const previous_block = Bitcoin.getLastBlock();
     const previous_block_hash = previous_block['hash'];
@@ -105,6 +100,41 @@ App.post('/register-nodes-bulk', function (req, res) {
     res.send({
         message: "Registro em lote de nós completo no novo nó!"
     });
+});
+
+App.post('/transaction/broadcast', function (req, res) {
+    const new_transaction = Bitcoin.createNewTransaction(req.body.amount, req.body.sender, req.body.recipient);
+
+    Bitcoin.addTransactionToPendingTransactions(new_transaction);
+
+    const request_promises = [];
+
+    Bitcoin.network_nodes.forEach(network_node_url => {
+        const request_options = {
+            url: `${network_node_url}/transaction`,
+            method: 'POST',
+            body: new_transaction,
+            json: true
+        };
+
+        request_promises.push(request(request_options));
+    });
+
+    Promise.all(request_promises)
+        .then(data => {
+            res.json({
+                message: "Transação criada e transmitida para os demais nós!"
+            })
+        });
+});
+
+App.post('/transaction', function (req, res) {
+    const new_transaction = req.body;
+    const block_index = Bitcoin.addTransactionToPendingTransactions(new_transaction);
+
+    res.json({
+        message: `A transação será adicionada ao bloco ${block_index}.`
+    })
 });
 
 
