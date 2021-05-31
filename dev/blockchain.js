@@ -58,9 +58,39 @@ Blockchain.prototype.proofOfWork = function (previous_block_hash, current_block_
     return nonce;
 }
 
+Blockchain.prototype.chainIsValid = function (blockchain) {
+    let current_block = null;
+    let previous_block = null;
+    let block_hash = null;
+    const blockchain_length = blockchain.length;
+
+    for (let it = 1; it < blockchain_length; it++) {
+        current_block = blockchain[it];
+        previous_block = blockchain[it - 1];
+        block_hash = this.hashBlock(previous_block['hash'], {
+            transactions: current_block['transactions'],
+            index: current_block['index']
+        }, current_block['nonce']);
+
+        if (block_hash.substring(0, 4) !== "0000")
+            return false;
+
+        if (current_block['previous_block_hash'] !== previous_block['hash'])
+            return false;
+    }
+
+    const genesis_block = blockchain[0];
+    const is_nonce_correct = genesis_block['nonce'] === 100;
+    const is_previous_block_hash_correct = genesis_block['previous_block_hash'] === '0';
+    const is_hash_correct = genesis_block['hash'] === '0';
+    const are_transactions_correct = genesis_block['transactions'].length === 0;
+
+    return is_nonce_correct && is_previous_block_hash_correct && is_hash_correct && are_transactions_correct;
+}
+
 Blockchain.prototype.addTransactionToPendingTransactions = function (transaction_obj) {
-   this.pending_transactions.push(transaction_obj);
-   return this.getLastBlock()['index'] + 1;
+    this.pending_transactions.push(transaction_obj);
+    return this.getLastBlock()['index'] + 1;
 }
 
 module.exports = Blockchain;
